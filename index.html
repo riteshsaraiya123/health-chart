@@ -1,1 +1,378 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI પર્સનલાઇઝ્ડ હેલ્થ એનાલિસિસ એન્ડ પ્રિવેન્શન ગાઈડ</title>
+    <style>
+        :root { --primary: #1e3a8a; --accent: #2563eb; --success: #16a34a; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #eff6ff, #f3e8ff); display: flex; justify-content: center; padding: 10px; min-height: 100vh; margin: 0; color: #1e293b; }
+        .card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); width: 100%; max-width: 650px; }
+        h1 { color: var(--primary); text-align: center; margin-bottom: 2px; font-size: 21px; }
+        .subtitle { text-align: center; color: #64748b; font-size: 12px; margin-bottom: 12px; }
+        
+        .section-title { font-size: 13px; font-weight: bold; color: var(--accent); margin: 10px 0 5px 0; border-bottom: 2px solid #e0e7ff; padding-bottom: 3px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+        
+        .input-group { margin-bottom: 7px; }
+        label { display: block; margin-bottom: 2px; font-weight: 600; font-size: 11px; color: #475569; }
+        input, select { width: 100%; padding: 7px 9px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 12px; box-sizing: border-box; outline: none; background: #fff; }
+        input:focus, select:focus { border-color: var(--accent); }
+        
+        button { width: 100%; padding: 11px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; transition: 0.3s; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); margin-top: 10px; }
+        button:hover { opacity: 0.95; }
+        
+        #resultBox { margin-top: 12px; display: none; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; }
+        .score-box { text-align: center; padding: 8px; border-radius: 8px; margin-bottom: 8px; color: white; }
+        .bmi-text { font-size: 13px; font-weight: bold; }
+        .percentage-text { font-size: 22px; font-weight: bold; margin: 2px 0; }
+        
+        .diet-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+        .diet-box { background: #f8fafc; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 11px; }
+        .diet-box strong { display: block; color: var(--primary); margin-bottom: 3px; font-size: 12px; }
+        
+        .advice-box { background: #f8fafc; padding: 8px; border-radius: 8px; margin-bottom: 6px; border: 1px solid #e2e8f0; border-left: 4px solid var(--accent); font-size: 11px; }
+        .advice-box strong { display: block; margin-bottom: 2px; color: var(--primary); font-size: 12px; }
+        .advice-box p { margin: 0; color: #334155; line-height: 1.35; }
+        
+        .loading { text-align: center; margin-top: 10px; display: none; font-weight: bold; color: var(--accent); font-size: 12px; }
+        .error { background: #fee2e2; color: #991b1b; padding: 8px; border-radius: 6px; margin-bottom: 8px; display: none; font-size: 11px; border: 1px solid #fecaca; }
 
+        /* A4 Single Page Print Optimization */
+        @media print {
+            body { background: white; padding: 0; display: block; }
+            .card { box-shadow: none; max-width: 100%; padding: 4px; border: none; }
+            .no-print { display: none !important; }
+            #resultBox { display: block !important; border: none; padding: 0; margin-top: 4px; }
+            @page { size: A4; margin: 4mm; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>🩺 AI પર્સનલાઇઝ્ડ હેલ્થ એનાલિસિસ એન્ડ પ્રિવેન્શન ગાઈડ</h1>
+    <div class="subtitle">ડાયાબિટીસ, કેન્સર અને ગંભીર રોગોથી બચવાના વ્યક્તિગત ઉપાયો તથા આહાર આયોજન</div>
+    
+    <div class="no-print" style="background: #f1f5f9; padding: 8px; border-radius: 8px; margin-bottom: 8px;">
+        <label style="color: #1e293b;">⚙️ API Key સેટિંગ્સ (કોટા લિમિટ માટે)</label>
+        <div style="display: flex; gap: 5px; margin-top: 3px;">
+            <select id="apiKeySelector" onchange="checkCustomKey()" style="flex: 1;">
+                <option value="KEY_1" selected>Profile 1 (Primary Key)</option>
+                <option value="KEY_2">Profile 2 (Backup Key)</option>
+                <option value="KEY_3">Profile 3 (Backup Key)</option>
+                <option value="KEY_4">Profile 4 (Backup Key)</option>
+                <option value="KEY_5">Profile 5 (Backup Key)</option>
+                <option value="CUSTOM">➕ નવો API Key જાતે નાખો...</option>
+            </select>
+        </div>
+        <div id="customKeyBox" style="display: none; margin-top: 5px;">
+            <input type="text" id="customApiKeyInput" placeholder="અહીં તમારો નવો Gemini API Key પેસ્ટ કરો...">
+        </div>
+    </div>
+
+    <div class="no-print">
+        <div class="section-title">👤 વ્યક્તિગત માહિતી</div>
+        <div class="grid-2">
+            <div class="input-group">
+                <label>નામ</label>
+                <input type="text" id="userName" placeholder="તમારું નામ">
+            </div>
+            <div class="input-group">
+                <label>જાતિ</label>
+                <select id="gender">
+                    <option value="પુરુષ">પુરુષ</option>
+                    <option value="સ્ત્રી">સ્ત્રી</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="grid-2">
+            <div class="input-group">
+                <label>ઉંમર (વર્ષ)</label>
+                <input type="number" id="age" placeholder="દા.ત. 15">
+            </div>
+            <div class="input-group">
+                <label>ઊંચાઈ (સેમી) અને વજન (કિલો)</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="number" id="height" placeholder="સેમી">
+                    <input type="number" id="weight" placeholder="કિલો">
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title">📍 ભૌગોલિક અને સ્થાનિક વિગતો</div>
+        <div class="grid-3">
+            <div class="input-group">
+                <label>દેશ</label>
+                <input type="text" id="country" value="ભારત">
+            </div>
+            <div class="input-group">
+                <label>રાજ્ય</label>
+                <input type="text" id="state" value="ગુજરાત">
+            </div>
+            <div class="input-group">
+                <label>જિલ્લો</label>
+                <input type="text" id="district" value="નવસારી">
+            </div>
+        </div>
+        <div class="grid-2">
+            <div class="input-group">
+                <label>તાલુકો</label>
+                <input type="text" id="taluka" placeholder="દા.ત. ચિખલી">
+            </div>
+            <div class="input-group">
+                <label>ગામ / શહેર</label>
+                <input type="text" id="village" placeholder="દા.ત. વંજના">
+            </div>
+        </div>
+
+        <div id="errorBox" class="error"></div>
+
+        <button id="genBtn" onclick="calculateAIHealth()">✨ AI રોગ પ્રતિકારક અને હેલ્થ રિપોર્ટ મેળવો</button>
+    </div>
+
+    <div id="loadingBox" class="loading">
+        <p>🤖 AI તમારા ડેટાનું વિશ્લેષણ કરી રહ્યું છે (ઓટો-રીટ્રાય ચાલુ છે)...</p>
+    </div>
+
+    <div id="resultBox">
+        <div id="scoreColor" class="score-box">
+            <div id="welcome" style="font-size: 13px; font-weight: bold;"></div>
+            <div class="bmi-text" id="bmiVal"></div>
+            <div class="percentage-text" id="percentVal"></div>
+            <div id="statusLabel" style="font-size: 12px; font-weight: bold;"></div>
+        </div>
+        
+        <!-- Diet Plan Grid -->
+        <div class="diet-grid">
+            <div class="diet-box">
+                <strong>🌅 સવારનો નાસ્તો</strong>
+                <p id="breakfastPlan" style="margin:0; color:#334155;"></p>
+            </div>
+            <div class="diet-box">
+                <strong>☀️ બપોરનું ભોજન</strong>
+                <p id="lunchPlan" style="margin:0; color:#334155;"></p>
+            </div>
+            <div class="diet-box">
+                <strong>🌙 રાત્રિનું ભોજન</strong>
+                <p id="dinnerPlan" style="margin:0; color:#334155;"></p>
+            </div>
+        </div>
+
+        <div class="advice-box" style="border-left-color: #dc2626;">
+            <strong>🛡️ ડાયાબિટીસ અને ગંભીર રોગો સામે વ્યક્તિગત રક્ષણ (Prevention):</strong>
+            <p id="diseasePrevention"></p>
+        </div>
+
+        <div class="advice-box">
+            <strong>🏃‍♂️ વ્યાયામ અને શારીરિક પ્રવૃત્તિ:</strong>
+            <p id="exercisePlan"></p>
+        </div>
+
+        <div class="advice-box" style="border-left-color: #16a34a;">
+            <strong>💡 અન્ય સ્વાસ્થ્ય ટિપ્સ (Health Tips):</strong>
+            <p id="healthTips"></p>
+        </div>
+        
+        <div class="advice-box" style="border-left-color: #d97706;">
+            <strong>📌 સ્વાસ્થ્ય વિષયક સંપૂર્ણ હૃદયસ્પર્શી સારાંશ (Conclusion - 5 Lines):</strong>
+            <p id="healthConclusion" style="white-space: pre-line;"></p>
+        </div>
+        
+        <button class="no-print" onclick="window.print()" style="background: #475569; margin-top: 6px; padding: 9px;">🖨️ A4 પેજ પર પ્રિન્ટ કરો</button>
+    </div>
+</div>
+
+<script>
+const API_KEYS = {
+    "KEY_1": "AQ.Ab8RN6L2ImFYMgFIAzLwmDfEpSye5B2bpOsmkVW-k0ObQcqxMg",
+    "KEY_2": "",
+    "KEY_3": "",
+    "KEY_4": "",
+    "KEY_5": ""
+};
+
+const MODEL = "gemini-3.6-flash";
+const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+
+function checkCustomKey() {
+    const selector = document.getElementById('apiKeySelector').value;
+    const customBox = document.getElementById('customKeyBox');
+    if(selector === 'CUSTOM') {
+        customBox.style.display = 'block';
+    } else {
+        customBox.style.display = 'none';
+    }
+}
+
+async function calculateAIHealth() {
+    let key = "";
+    const selector = document.getElementById('apiKeySelector').value;
+    
+    if(selector === 'CUSTOM') {
+        key = document.getElementById('customApiKeyInput').value.trim();
+    } else {
+        key = API_KEYS[selector];
+    }
+
+    const errorBox = document.getElementById('errorBox');
+    errorBox.style.display = "none";
+
+    if(!key) {
+        errorBox.innerText = "કૃપા કરીને માન્ય API Key પસંદ કરો અથવા નવો Key દાખલ કરો!";
+        errorBox.style.display = "block";
+        return;
+    }
+
+    const name = document.getElementById('userName').value.trim() || "મિત્ર";
+    const gender = document.getElementById('gender').value;
+    const age = document.getElementById('age').value;
+    const weight = parseFloat(document.getElementById('weight').value);
+    const heightCm = parseFloat(document.getElementById('height').value);
+    
+    const country = document.getElementById('country').value.trim() || "ભારત";
+    const state = document.getElementById('state').value.trim() || "ગુજરાત";
+    const district = document.getElementById('district').value.trim() || "";
+    const taluka = document.getElementById('taluka').value.trim() || "";
+    const village = document.getElementById('village').value.trim() || "";
+
+    if(!weight || !heightCm || !age) {
+        errorBox.innerText = "કૃપા કરીને ઉંમર, ઊંચાઈ અને વજન યોગ્ય રીતે ભરો!";
+        errorBox.style.display = "block";
+        return;
+    }
+
+    const heightM = heightCm / 100;
+    const bmi = (weight / (heightM * heightM)).toFixed(1);
+
+    document.getElementById('loadingBox').style.display = "block";
+    document.getElementById('resultBox').style.display = "none";
+    document.getElementById('genBtn').disabled = true;
+
+    const prompt = `
+તમે એક નિષ્ણાત AI ડૉક્ટર અને હેલ્થ એક્સપર્ટ છો. નીચે આપેલા યુઝરના વાસ્તવિક ડેટા (ઉંમર, વજન, ઊંચાઈ, BMI ${bmi}) અને સ્થાનિક વિસ્તાર (${village}, ${taluka}, ${district}, ${state}) ના આધારે સંપૂર્ણ સચોટ અને વ્યક્તિગત રિપોર્ટ ગુજરાતીમાં તૈયાર કરો.
+
+માહિતી:
+- નામ: ${name}, જાતિ: ${gender}, ઉંમર: ${age} વર્ષ
+- ઊંચાઈ: ${heightCm} સેમી, વજન: ${weight} કિલો (BMI: ${bmi})
+
+તમારે નીચે આપેલા EXACT FORMAT માં જ જવાબ આપવો જોઈએ:
+
+STATUS:
+(સ્વાસ્થ્ય સ્થિતિ ટૂંકમાં જેમ કે: "નમસ્તે ${name}! તમારું વજન નિયંત્રણમાં છે.")
+
+SCORE:
+(0 થી 100 ફિટનેસ આંકડો, માત્ર આંકડો દા.ત. 88)
+
+COLOR:
+(જો BMI 18.5 થી 24.9 હોય તો #16a34a, બાકી #d97706 અથવા #dc2626)
+
+BREAKFAST:
+(સવારના નાસ્તામાં પૌષ્ટિક આહારની ટૂંકી વિગત)
+
+LUNCH:
+(બપોરના ભોજનમાં સંતુલિત આહાર)
+
+DINners:
+(રાત્રિના ભોજનમાં હલકો ખોરાક)
+
+PREVENTION:
+(યુઝરના ચોક્કસ BMI (${bmi}) અને ઉંમર (${age} વર્ષ) ના ડેટાને ધ્યાનમાં રાખીને, ડાયાબિટીસ અને ગંભીર રોગો સામે બચવા માટેની બિલકુલ વ્યક્તિગત અને સચોટ વૈજ્ઞાનિક સલાહ - 3 વાક્યો)
+
+EXERCISE:
+(રોગપ્રતિકારક શક્તિ વધારવા માટે કયા પ્રકારનો વ્યાયામ કરવો)
+
+TIPS:
+(૨ મહત્વપૂર્ણ હેલ્થ પ્રિવેન્શન ટિપ્સ)
+
+CONCLUSION:
+(બિલકુલ હૃદયસ્પર્શી, પોઝિટિવ અને સચોટ બરાબર 5 લાઇનનો સારાંશ આપો, જેમાં વ્યક્તિના ઉત્સાહ અને સ્વાસ્થ્ય પ્રત્યેની સકારાત્મક ભાવના ઝળકતી હોય.)
+`;
+
+    let success = false;
+    let aiText = "";
+
+    // Auto-Retry Mechanism (3 attempts with delay)
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            if (attempt > 1) await new Promise(r => setTimeout(r, 2000));
+
+            const response = await fetch(API_ENDPOINT, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": key
+                },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
+            const result = await response.json();
+            if(!response.ok || result.error) {
+                throw new Error(result?.error?.message || "API Error");
+            }
+
+            aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            if(aiText) {
+                success = true;
+                break;
+            }
+        } catch(e) {
+            console.error("Attempt " + attempt + " failed:", e);
+        }
+    }
+
+    document.getElementById('loadingBox').style.display = "none";
+    document.getElementById('genBtn').disabled = false;
+
+    if(!success) {
+        errorBox.innerText = "કોટા લિમિટ અથવા કનેક્ટિવિટીની સમસ્યા છે! ઓટો-રીટ્રાય નિષ્ફળ ગયું છે, કૃપા કરીને ડ્રોપડાઉનમાંથી બીજી Profile (Key) પસંદ કરો.";
+        errorBox.style.display = "block";
+        return;
+    }
+
+    const status = extractField(aiText, "STATUS:");
+    const score = extractField(aiText, "SCORE:") || "85";
+    const color = extractField(aiText, "COLOR:") || "#16a34a";
+    const breakfast = extractField(aiText, "BREAKFAST:");
+    const lunch = extractField(aiText, "LUNCH:");
+    const dinner = extractField(aiText, "DINners:");
+    const prevention = extractField(aiText, "PREVENTION:");
+    const exercise = extractField(aiText, "EXERCISE:");
+    const tips = extractField(aiText, "TIPS:");
+    const conclusion = extractField(aiText, "CONCLUSION:");
+
+    document.getElementById('welcome').innerText = "નમસ્તે, " + name + " (" + village + ")";
+    document.getElementById('bmiVal').innerText = "BMI: " + bmi;
+    document.getElementById('percentVal').innerText = "ફિટનેસ સ્કોર: " + score + "%";
+    document.getElementById('statusLabel').innerText = status;
+    document.getElementById('scoreColor').style.background = color;
+    
+    document.getElementById('breakfastPlan').innerText = breakfast || "પૌષ્ટિક નાસ્તો, ફળો અને દૂધ.";
+    document.getElementById('lunchPlan').innerText = lunch || "દાળ, ભાત, રોટલી અને લીલા શાકભાજી.";
+    document.getElementById('dinnerPlan').innerText = dinner || "હલકો ખોરાક અને સૂપ.";
+    document.getElementById('diseasePrevention').innerText = prevention || "તમારા વર્તમાન શારીરિક ડેટા મુજબ, રિફાઇન્ડ શુગર અને મેંદાથી દૂર રહીને એન્ટિઓક્સિડન્ટ યુક્ત સ્થાનિક આહાર લેવો ડાયાબિટીસ સામે રક્ષણ આપે છે.";
+    document.getElementById('exercisePlan').innerText = exercise || "રોજ સવારે ૩૦ મિનિટ ઝડપી ચાલવું અને હળવા આસનો કરવા.";
+    document.getElementById('healthTips').innerText = tips || "પૂરતા પ્રમાણમાં પાણી પીવું અને તણાવ મુક્ત રહેવું.";
+    document.getElementById('healthConclusion').innerText = conclusion || "૧. તમારું સ્વાસ્થ્ય એ જ તમારી સૌથી મોટી મૂડી અને સાચી સંપત્તિ છે.\n૨. નાના-નાના સકારાત્મક બદલાવ પણ જીવનમાં મોટો ફેરફાર લાવી શકે છે.\n૩. નિયમિત શિસ્ત અને સંતુલિત આહાર દ્વારા તમે હંમેશાં ઉર્જાવાન રહી શકો છો.\n૪. તમારા શરીરની કાળજી રાખવી એ સ્વયં પ્રત્યેનો સૌથી મોટો પ્રેમ છે.\n૫. હસતું ચહેરો અને સ્વસ્થ શરીર સાથે આગામી દિવસો વધુ સુંદર બને તેવી શુભકાનાઓ!";
+    
+    document.getElementById('resultBox').style.display = "block";
+}
+
+function extractField(text, label) {
+    const start = text.indexOf(label);
+    if(start === -1) return "";
+    let content = text.substring(start + label.length).trim();
+    const nextLine = content.indexOf("\n\n");
+    if(nextLine !== -1) {
+        content = content.substring(0, nextLine);
+    }
+    return content.trim();
+}
+</script>
+
+</body>
+</html>
